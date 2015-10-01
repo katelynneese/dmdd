@@ -10,7 +10,7 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 def expectvalues(element='xenon', Qmin=5, Qmax=100, binsize=1, v_lag=220., 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_si', sigma_val=200,
+                 sigma_name='sigma_si', sigma_val=75.50,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3):
     """Returns the expected number of recoils for an associated energy.
@@ -39,7 +39,7 @@ def expectvalues(element='xenon', Qmin=5, Qmax=100, binsize=1, v_lag=220.,
 def calc_xy(element='xenon', Qmin=5, Qmax=100, binsize=1, v_lag=220., 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_si', sigma_val=200,
+                 sigma_name='sigma_si', sigma_val=75.50,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3): 
     """
@@ -73,7 +73,7 @@ def calc_xy(element='xenon', Qmin=5, Qmax=100, binsize=1, v_lag=220.,
 def plot_xy(vlag_list, times, element='xenon', Qmin=5, Qmax=100, binsize=1, 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_si', sigma_val=200,
+                 sigma_name='sigma_si', sigma_val=75.50,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3, residuals=False):
     
@@ -103,24 +103,28 @@ def plot_xy(vlag_list, times, element='xenon', Qmin=5, Qmax=100, binsize=1,
         if sigma_name is 'sigma_si':
             plt.title('Dark Matter Collision Spectrum for Spin Independent Model', fontsize = 15)
             plt.xlim((0,80))
+            plt.ylim((0, 40))
         else:
             plt.title('Dark Matter Collision Spectrum for Anapole Model', fontsize = 15)
             plt.xlim((0,80))
+            plt.ylim((0, 40))
             
         if residuals:
-            plt.plot(x,((y-y0)/y0)*100, label = r'$%i\/\ \mathrm{  km/s} $' % (v_lag))
+            plt.plot(x,y-y0, label = r'$%i\/\ \mathrm{  km/s} $' % (v_lag))
             plt.ylabel('Number of Residual Expected Recoil Events', fontsize = 13)
             plt.xlim((0,80))
-            #m3 = MultipleLocator(3)
+            plt.ylim((-4, 4))
+            m3 = MultipleLocator(1)
             
-            #plt.axes().yaxis.set_minor_locator(m3)
+            plt.axes().yaxis.set_major_locator(m3)
         else:
             plt.plot(x,y, label = r'$%i\/\ \mathrm{  km/s} $' % (v_lag))
             plt.ylabel('Number of Expected Recoil Events', fontsize = 13)
-            plt.ylim((0, 175))
-            #ml = MultipleLocator(5)
-            #m2 = MultipleLocator(25)
-            #plt.axes().yaxis.set_major_locator(m2)
+            plt.ylim((0, 40))
+            plt.xlim((0, 80))
+            m1= MultipleLocator(5)
+            #m2 = MultipleLocator(10)
+            plt.axes().yaxis.set_major_locator(m1)
             #plt.axes().yaxis.set_minor_locator(ml)
 
             
@@ -163,7 +167,7 @@ def calc_vlag(t, v_sun = 220., v_earth= 30.):
 def modelplot(t1, t2, plotnumber = 10, element='xenon', Qmin=5, Qmax=100, binsize=1, v_lag=220., 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_si', sigma_val=200,
+                 sigma_name='sigma_si', sigma_val=75.50,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3, residuals=False):
     
@@ -187,7 +191,7 @@ def modelplot(t1, t2, plotnumber = 10, element='xenon', Qmin=5, Qmax=100, binsiz
 def dayplot(t1, t2, element='xenon', Qmin=5., Qmax=100., binsize=10, v_lag=220., 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_si', sigma_val=200,
+                 sigma_name='sigma_si', sigma_val=75.50,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3):
     plt.figure(figsize=(8,8))
@@ -229,13 +233,13 @@ def duoplot(Qmin, Qmax):
     x1, y1 = calc_xy(element='xenon', Qmin=Qmin, Qmax=Qmax, binsize=1, v_lag=220., 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_si', sigma_val=200,
+                 sigma_name='sigma_si', sigma_val=75.50,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3)
     x2, y2 = calc_xy(element='xenon', Qmin=Qmin, Qmax=Qmax, binsize=1, v_lag=220., 
                  efficiency= dmdd.eff.efficiency_unit, 
                  exposure=2000, 
-                 sigma_name='sigma_anapole', sigma_val=200,
+                 sigma_name='sigma_anapole', sigma_val=44.25,
                  mass=50.0, v_esc=540.0, 
                  v_rms=220.0, rho_x=0.3)
     plt.figure(figsize=(8,8))
