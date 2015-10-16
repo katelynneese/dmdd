@@ -13,19 +13,19 @@ import matplotlib as mpl
 import matplotlib.patheffects as PathEffects
 import matplotlib.gridspec as gridspec
 import glob
-from matplotlib import rc
-rc('font',**{'family':'serif','serif':['Times','Palatino']})
-rc('text', usetex=True)
+#from matplotlib import rc
+#rc('font',**{'family':'serif','serif':['Times','Palatino']})
+#rc('text', usetex=True)
 
 
 import dmdd_efficiencies as eff
 import constants as const
 import rate_UV 
 
-mpl.rcParams['xtick.major.size']=8
-mpl.rcParams['ytick.major.size']=8
-mpl.rcParams['xtick.labelsize']=18
-mpl.rcParams['ytick.labelsize']=18
+#mpl.rcParams['xtick.major.size']=8
+#mpl.rcParams['ytick.major.size']=8
+#mpl.rcParams['xtick.labelsize']=18
+#mpl.rcParams['ytick.labelsize']=18
 
 
 ##############################################
