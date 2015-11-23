@@ -55,6 +55,59 @@ if not os.path.exists(RESULTS_PATH):
 
 
 
+
+
+
+ 
+"""
+Begin writing wrapper function called dRdR_AM here
+wraps the function rate_UV.dRdQ
+
+"""
+
+def dRdQ_AM(mass, sigma,
+            t1 = 0, t2 = 365, timebins = 50,
+            vlag_mean = 220., ampmod = 60., v_earth = 30.):
+    
+    "Creates a list of times for which to calculate the vlag"    
+    times = np.linspace(t1, t2, timebins)
+
+    "Calculate the vlag at these times based on the position of the sun"
+    v_lag = vlag_mean + v_earth*np.sin((2*np.pi*times)/(365.))
+
+    "Send rate_UV.dRdQ all of the new vlags just calculated to find the rate at that time, as well as other defined      parameters"
+    rate_UV.dRdQ(v_lag = v_lag, mx = mass, sigp = sigma)
+
+    "Return an array of rates based on the times given"
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+    
+
+
 """
 Example usage of the objects here defined:
 
