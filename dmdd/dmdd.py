@@ -65,21 +65,25 @@ wraps the function rate_UV.dRdQ
 
 """
 
-def dRdQ_AM(mass, sigma,
-            t1 = 0, t2 = 365, timebins = 50,
-            vlag_mean = 220., ampmod = 60., v_earth = 30.):
-    
-    "Creates a list of times for which to calculate the vlag"    
-    times = np.linspace(t1, t2, timebins)
+def dRdQ_AM(mass = 50., sigma = 75.5, Q = 100.,
+            time = 0, bins = 50,
+            vlag_mean = 220., v_amplitude = 30.):
+
+    "Passes a single time and a single energy to the function. Q must be passed to rate_UV.dRdQ as an array"
+    energy = np.array([Q])
 
     "Calculate the vlag at these times based on the position of the sun"
-    v_lag = vlag_mean + v_earth*np.sin((2*np.pi*times)/(365.))
+    "V_amplitude is the velocity of earth * cos(angle of tilt with galatic plane)"
+    "Time t = 0 corresponds to when the velocity is 220 m/s, which occurs in March**"
+    v_lag = vlag_mean + v_amplitude*np.sin((2*np.pi*time)/(365.))
 
-    "Send rate_UV.dRdQ all of the new vlags just calculated to find the rate at that time, as well as other defined      parameters"
-    rate_UV.dRdQ(v_lag = v_lag, mx = mass, sigp = sigma)
+    "Send rate_UV.dRdQ all of the new vlags just calculated to find the rate at that time, as well as other defined parameters"
+    "v_lag only takes a scalar, so goes in a for loop"
+
+    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma)
 
     "Return an array of rates based on the times given"
-
+    return rate_QT
 
 
 
