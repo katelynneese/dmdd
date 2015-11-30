@@ -82,7 +82,7 @@ def dRdQ_AM(mass = 50., sigma = 75.5, Q = 100.,
 
     rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma)
 
-    "Return an array of rates based on the times given"
+    "Return a 1D array with the rate based on the time and energy given"
     return rate_QT
 
 
@@ -850,7 +850,383 @@ class Simulation(object):
 
         if return_plot_items:
             return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
+
+
+
+
+
+
+
+
+"######################### SIMULATION AM START HERE ##############################"
+
+
+
+
+
+      
+
+      
+class Simulation_AM(object):
+    """
+    A simulation of dark-matter direct-detection data under a given experiment and scattering model, now including
+    the effects of annual modulation.
+
+    This object handles a single simulated data set (nuclear recoil energy
+    spectrum). It is generaly initialized and used by the :class:`MultinestRun`
+    object, but can be used stand-alone.  
+
+    Simulation data will only be generated if a simulation with the right
+    parameters and name does not already exist, or if ``force_sim=True`` is
+    provided upon :class:`Simulation` initialization; if the data exist, it will
+    just be read in.  (Data is a list of nuclear recoil energies of
+    "observed" events.) Initializing :class:`Simulation` with given parameters
+    for the first time will produce 3 files, located by default at
+    ``$DMDD_PATH/simulations`` (or ``./simulations`` if ``$DMDD_PATH`` not
+    defined):  
+
+      - .dat file with a list of nuclear-recoil energies (keV), drawn from a
+      Poisson distribution with an expected number of events given by the
+      underlying scattering model.
+      
+      - .pkl file with all relevant initialization parameters for record
+      
+      - .pdf plot of the simulated recoil-energy spectrum with simulated
+      data points (with Poisson error bars) on top of the underlying model 
+
     
+    :param name:
+        Identifier for simulation (e.g. 'sim1')
+    :type name: ``str``
+
+    :param experiment: 
+        Experiment for simulation.
+    :type experiment: :class:`Experiment`
+
+    :param model: 
+        Model under which to simulate data.
+    :type model: :class:`Model`
+
+    :param parvals:
+       Values of model parameters. Must contain the
+       same parameters as ``model``.
+    :type parvals:  ``dict``  
+    
+    :param t1:
+        Time/day to start the simulation at. Default value is 0.
+    :type parvals: ``int``
+    
+    :param t2:
+        Time/day to stop the simulation at. Default value is 365.
+    :type parvals: ``int``
+
+    :param path: 
+      The path under which to store the simulations.
+    :type path: ``str``
+      
+    :param force_sim: 
+      If ``True``, then redo the simulations no matter what.  If ``False``,
+      then the simulations will be redone if and only if the given simulation
+      parameters don't match what has already been simulated
+      for this simulation name.
+    :type force_sim: ``bool``
+
+    :param asimov: 
+      Do asimov simulations.  Not currently implemented.
+
+    :param nbins_asimov: 
+      Number of asimov bins.
+
+    :param plot_nbins:
+       Number of bins to bin data in for rate plot.
+
+    :param plot_theory:
+       Whether to plot the "true" theoretical rate curve along
+       with the simulated data.
+
+    :param silent:
+        If ``True``, then print messages will be suppressed.
+
+    """
+    def __init__(self, name, experiment,         
+                 model, parvals,
+                 t1 = 0, t2 = 365, #start and stop times for simuation
+                 path=SIM_PATH, force_sim=False,
+                 asimov=False, nbins_asimov=20,
+                 plot_nbins=20, plot_theory=True, 
+                 silent=False):
+        self.silent = silent
+        if not set(parvals.keys())==set(model.param_names):
+            raise ValueError('Must pass parameter value dictionary corresponding exactly to model.param_names')
+        
+        self.model = model #underlying model
+        self.experiment = experiment
+    
+        #build param_values from parvals
+        self.param_values = [parvals[par] for par in model.param_names]
+        self.param_names = list(self.model.param_names)
+        for k,v in self.model.fixed_params.items():
+            self.param_values.append(v)
+            self.param_names.append(k)
+        self.name = name
+        self.path = path
+        self.asimov = asimov
+        self.nbins_asimov = nbins_asimov
+        self.t1 = t1
+        self.t2 = t2
+    
+       
+        self.file_basename = '{}_{}'.format(name,experiment.name)
+
+        
+        inds = np.argsort(self.param_names)
+        sorted_parnames = np.array(self.param_names)[inds]
+        sorted_parvals = np.array(self.param_values)[inds]
+        for parname, parval in zip(sorted_parnames, sorted_parvals):
+            self.file_basename += '_{}_{:.2f}'.format(parname, parval)
+
+        #calculate total expected rate
+        dRdQ_params = model.default_rate_parameters.copy()
+        allpars = model.default_rate_parameters.copy()
+        allpars['simname'] = self.name
+        for i,par in enumerate(model.param_names): #model parameters
+            dRdQ_params[par] = self.param_values[i]
+            allpars[par] = self.param_values[i]
+        
+        for kw,val in experiment.parameters.iteritems(): #add experiment parameters
+            allpars[kw] = val
+        dRdQ_params['element'] = experiment.element
+        self.dRdQ_params = dRdQ_params
+    
+        self.model_Qgrid = np.linspace(experiment.Qmin,experiment.Qmax,1000)
+        efficiencies = experiment.efficiency(self.model_Qgrid)
+        self.model_dRdQ = self.model.dRdQ(self.model_Qgrid,**dRdQ_params)
+        R_integrand =  self.model_dRdQ * efficiencies                       ##### here is where the integral is?
+        
+        """writing integrand for the new dRdQ_AM-- need help here though"""
+        
+        dRdQ_AM_params = model.default_rate_parameters.copy()
+
+        for i,par in enumerate(model.param_names): #model parameters
+            dRdQ_AM_params[par] = self.param_values[i]
+            allpars[par] = self.param_values[i]
+        
+        
+        self.dRdQ_AM_params = dRdQ_AM_params
+        self.model_dRdQ_AM = self.model.dRdQ_AM(self.model_Qgrid, **dRdQ_AM_params)
+        RAM_integrand = self.model_dRdQ_AM * efficiencies 
+        
+        
+        
+        self.model_R = np.trapz(R_integrand,self.model_Qgrid)
+        self.model_N = self.model_R * experiment.exposure * YEAR_IN_S
+    
+    
+        #create dictionary of all parameters relevant to simulation
+        self.allpars = allpars
+        self.allpars['experiment'] = experiment.name    
+
+        #record dictionary for relevant coupling normalizations only:
+        norm_dict = {}
+        for kw in model.param_names:
+            if kw in PAR_NORMS:
+                norm_dict[kw] = PAR_NORMS[kw]
+        self.allpars['norms'] = norm_dict
+                          
+      
+        self.datafile = '{}/{}.dat'.format(self.path,self.file_basename)
+        self.plotfile = '{}/{}.pdf'.format(self.path,self.file_basename)
+        self.picklefile = '{}/{}.pkl'.format(self.path,self.file_basename)
+    
+        #control to make sure simulations are forced if they need to be
+        if os.path.exists(self.picklefile) and os.path.exists(self.datafile):
+            fin = open(self.picklefile,'rb')
+            allpars_old = pickle.load(fin)
+            fin.close()
+            if not compare_dictionaries(self.allpars,allpars_old):
+                print('Existing simulation does not match current parameters.  Forcing simulation.\n\n')
+                force_sim = True
+                
+        else:
+            print 'Simulation data and/or pickle file does not exist. Forcing simulation.\n\n'
+            force_sim = True
+      
+        if force_sim:
+            if asimov:
+                raise ValueError('Asimov simulations not yet implemented!')
+            else:
+                Q = self.simulate_data()
+                np.savetxt(self.datafile,Q)
+                fout = open(self.picklefile,'wb')
+                pickle.dump(self.allpars,fout)
+                fout.close()
+                self.Q = np.atleast_1d(Q)
+                self.N = len(self.Q)
+        else:
+            if asimov:
+                raise ValueError('Asimov simulations not yet implemented!')
+            else:
+                Q = np.loadtxt(self.datafile)
+                self.Q = np.atleast_1d(Q)
+                self.N = len(self.Q)
+                
+
+        if asimov:
+            raise ValueError('Asimov not yet implemented!')
+        else:
+            self.N = len(self.Q)
+
+        if force_sim or (not os.path.exists(self.plotfile)):
+            self.plot_data(plot_nbins=plot_nbins, plot_theory=plot_theory, save_plot=True)
+        else:
+            if not self.silent:
+                print "simulation had %i events (expected %.0f)." % (self.N,self.model_N)
+    
+       ################################ the part that changes ############################################## 
+    def simulate_data(self):
+        """
+        Do Poisson simulation of data according to scattering model's dR/dQ.
+        """ 
+        Nexpected = self.model_N
+        if Nexpected > 0:
+            npts = 10000
+            Nevents = poisson.rvs(Nexpected) # the number to sum to
+            Q_array = np.zeros(Nevents) #array to keep track of energies
+            T_array = np.zeros(Nevents) #array to keep track of times
+            
+            # choose a generous envelope function. not quite sure what to pick here
+            env = 1
+            # set matches = 0, loop through random numbers to find matches
+            matches = 0
+            
+            pdf = self.model.dRdQ_AM(Qgrid, time, **self.dRdQ_params) * efficiency / (self.model_RAM) 
+            ##divided by the integral, integral coded above
+            
+
+            while matches < Nevents:
+                U = np.random.rand() #random number between 0 and 1 ? need a range to put here
+                Q_rand = np.random.rand()*(Qmax - Qmin) + Qmin #random number between Qmax and Qmin 
+                T_rand = np.random.rand()*(t1 - t2) + t2 #random number between t1 and t2 
+                
+                if U < pdf(Q_rand, T_rand) / env()
+                    #increment matches
+                    matches = matches + 1
+                    Q_array.append(Q_rand)
+                    T_array.append(T_rand)
+      
+            Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
+            efficiency = self.experiment.efficiency(Qgrid)
+
+        else:
+            Q_array = np.array([])
+            T_array = np.array([])
+            Nevents = 0
+            Nexpected = 0
+
+        if not self.silent:
+            print "simulated: %i events (expected %.0f)." % (Nevents,Nexpected)
+        return Q_array
+    
+    
+    #############################      #######################################
+	    
+    def plot_data(self, plot_nbins=20, plot_theory=True, save_plot=True,
+                  make_plot=True, return_plot_items=False):
+        """
+        Plot simuated data.
+
+        
+        
+        :param plot_nbins:
+            Number of bins for plotting.
+
+        :param plot_theory:
+            Whether to overplot the theory rate curve on top of the
+            data points.
+
+        :param save_plot:
+            Whether to save plot under ``self.plotfile``.
+
+        :param make_plot:
+            Whether to make the plot.  No reason really to ever
+            be false unless you only want the "plot items"
+            returned if ``return_plot_items=True`` is passed.
+
+        :param return_plot_items:
+            If ``True``, then function will return lots of things.
+            
+        """
+
+        Qhist,bins = np.histogram(self.Q,plot_nbins)
+        Qbins = (bins[1:]+bins[:-1])/2. 
+        binsize = Qbins[1]-Qbins[0] #valid only for uniform gridding.
+        Qwidths = (bins[1:]-bins[:-1])/2.
+        xerr = Qwidths
+        yerr = Qhist**0.5
+
+        Qhist_theory = self.model_dRdQ*binsize*self.experiment.exposure*YEAR_IN_S*self.experiment.efficiency(self.model_Qgrid)
+        Qbins_theory = self.model_Qgrid
+
+        if make_plot:
+            plt.figure()
+            plt.title('%s (total events = %i)' % (self.experiment.name,self.N), fontsize=18)
+            xlabel = 'Nuclear recoil energy [keV]'
+            ylabel = 'Time [days]'
+            X,Y = np.meshgrid(np.linspace(Qmin,Qmax,100), np.linspace(t1,t2,101))
+            fig, (ax1,ax2) = plt.subplots(1,2, figsize=(8,4)) # 2 subplots, fixes the figure size
+            xlabel = ax.set_xlabel(xlabel,fontsize=18)
+            ylabel = ax.set_ylabel(ylabel,fontsize=18)
+            if plot_theory:
+                if self.model.name in MODELNAME_TEX.keys():
+                    label='True model ({})'.format(MODELNAME_TEX[self.model.name])
+                else:
+                    label='True model'
+                ax1.imshow(pdf(X,Y), cmap='blues', extent=[0,Qmax,0,t2]) # graphs a smooth gradient
+                ax2.plot(Q_array, T_array, 'o', ms=0.4, alpha=0.5)
+                ax2.set_xlim(Qmin, Qmax)
+                ax2.set_ylim(t1, t2)
+                
+     
+            plt.legend(prop={'size':20},numpoints=1)
+            if save_plot:
+                plt.savefig(self.plotfile, bbox_extra_artists=[xlabel, ylabel], bbox_inches='tight')
+
+
+        if return_plot_items:
+            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
+    
+
+
+
+
+
+
+
+
+
+"#################################SIMULATION AM END HERE################################################"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
 class Model(object):
     """
     A generic class describing a dark-matter scattering model.
