@@ -65,11 +65,13 @@ wraps the function rate_UV.dRdQ
 
 """
 
-def dRdQ_AM(mass = 50., sigma = 75.5, Q = 100.,
-            time = 0, bins = 50,
+def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
+            time = 0, bins = 50, element = 'xenon',
             vlag_mean = 220., v_amplitude = 30.):
 
-    "Passes a single time and a single energy to the function. Q must be passed to rate_UV.dRdQ as an array"
+    """Passes a single time and a single energy to the function dRdQ based on time."""
+
+    "Q must be passed to rate_UV.dRdQ as an array"
     energy = np.array([Q])
 
     "Calculate the vlag at these times based on the position of the sun"
@@ -80,35 +82,33 @@ def dRdQ_AM(mass = 50., sigma = 75.5, Q = 100.,
     "Send rate_UV.dRdQ all of the new vlags just calculated to find the rate at that time, as well as other defined parameters"
     "v_lag only takes a scalar, so goes in a for loop"
 
-    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma)
+    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole,
+                           element = element)
 
     "Return a 1D array with the rate based on the time and energy given"
     return rate_QT
 
 
 
-
-
-
-
-
-
+def integral(Qmin, Qmax, Tmin, Tmax, Qpoints = 1000., Tpoints = 1000.,
+             function = dRdQ_AM, sigma_si= 0, sigma_anapole = 0, mass = 50., element = 'xenon', v_amplitude = 30.):
+    """Computes the numerical integral of a 2d function. Takes a 2d function, x min and max, y min and max.
+       xpoints and ypoints determine the width of the bins- a larger number results in a more accurate integral. """
+    Q_box = np.linspace(Qmin, Qmax, Qpoints)
+    T_box = np.linspace(Tmin, Tmax, Tpoints)
+    delta_Q = (Qmax - Qmin)/Qpoints
+    delta_T = (Tmax - Tmin)/Tpoints
+    #the volume of the boxes
+    volume = delta_T*delta_Q
+    total_sum = []
+    for i,Q in enumerate(Q_box):
+        for j,T in enumerate(T_box):
+            a_sum = np.sum(function(Q = Q, time = T, sigma_si = sigma_si, sigma_anapole = sigma_anapole,
+                                    mass = mass, element = element, v_amplitude = v_amplitude))
+            total_sum.append(a_sum)
     
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
+    function_sum = np.sum(total_sum)
+    return volume*function_sum
     
 
 
@@ -950,7 +950,10 @@ class Simulation_AM(object):
     """
     def __init__(self, name, experiment,         
                  model, parvals,
-                 t1 = 0, t2 = 365, #start and stop times for simuation
+                 Qmin = 5, Qmax = 100,
+                 element = 'xenon', sigma_si = 0, sigma_anapole = 0,
+                 mass = 50., v_amplitude = 30.,
+                 Tmin = 0, Tmax = 365, #start and stop times for simuation
                  path=SIM_PATH, force_sim=False,
                  asimov=False, nbins_asimov=20,
                  plot_nbins=20, plot_theory=True, 
@@ -961,6 +964,16 @@ class Simulation_AM(object):
         
         self.model = model #underlying model
         self.experiment = experiment
+        self.Qmax = Qmax
+        self.Qmin = Qmin
+        self.element = element
+        self.mass = mass
+        self.sigma_si = sigma_si
+        self.sigma_anapole = sigma_anapole
+        self.v_amplitude = v_amplitude
+        self.Tmin = Tmin
+        self.Tmax = Tmax
+    
     
         #build param_values from parvals
         self.param_values = [parvals[par] for par in model.param_names]
@@ -972,9 +985,7 @@ class Simulation_AM(object):
         self.path = path
         self.asimov = asimov
         self.nbins_asimov = nbins_asimov
-        self.t1 = t1
-        self.t2 = t2
-    
+
        
         self.file_basename = '{}_{}'.format(name,experiment.name)
 
@@ -1003,19 +1014,19 @@ class Simulation_AM(object):
         self.model_dRdQ = self.model.dRdQ(self.model_Qgrid,**dRdQ_params)
         R_integrand =  self.model_dRdQ * efficiencies                       ##### here is where the integral is?
         
-        """writing integrand for the new dRdQ_AM-- need help here though"""
+        """writing integrand for the new dRdQ_AM-- need help here though
         
         dRdQ_AM_params = model.default_rate_parameters.copy()
 
         for i,par in enumerate(model.param_names): #model parameters
             dRdQ_AM_params[par] = self.param_values[i]
             allpars[par] = self.param_values[i]
+
         
-        
-        self.dRdQ_AM_params = dRdQ_AM_params
+        self.dRdQ_AM_params = dRdQ_AM_params 
         self.model_dRdQ_AM = self.model.dRdQ_AM(self.model_Qgrid, **dRdQ_AM_params)
         RAM_integrand = self.model_dRdQ_AM * efficiencies 
-        
+        """
         
         
         self.model_R = np.trapz(R_integrand,self.model_Qgrid)
@@ -1093,26 +1104,42 @@ class Simulation_AM(object):
             Nevents = poisson.rvs(Nexpected) # the number to sum to
             Q_array = np.zeros(Nevents) #array to keep track of energies
             T_array = np.zeros(Nevents) #array to keep track of times
+
+
+
+            Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
+            efficiency = self.experiment.efficiency(Qgrid)
+            
             
             # choose a generous envelope function. not quite sure what to pick here
-            env = 1
+            env = 1.
             # set matches = 0, loop through random numbers to find matches
             matches = 0
             
-            pdf = self.model.dRdQ_AM(Qgrid, time, **self.dRdQ_params) * efficiency / (self.model_RAM) 
-            ##divided by the integral, integral coded above
+            def PDF(Q, time):
+                return dRdQ_AM(Q = Q, time = time, element = self.element, mass = self.mass,
+                               sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
+                                                                    Tmin = self.Tmin, Tmax = self.Tmax,
+                                                                    element = self.element, sigma_si = self.sigma_si,
+                                                                    sigma_anapole = self.sigma_anapole, mass = self.mass)
+
+
+                
+                ##divided by the integral, integral coded above
             
 
             while matches < Nevents:
                 U = np.random.rand() #random number between 0 and 1 ? need a range to put here
-                Q_rand = np.random.rand()*(Qmax - Qmin) + Qmin #random number between Qmax and Qmin 
-                T_rand = np.random.rand()*(t1 - t2) + t2 #random number between t1 and t2 
+                Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
+                T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
                 
-                if U < pdf(Q_rand, T_rand) / env()
+                if U < (PDF(Q_rand, T_rand)/env):
                     #increment matches
                     matches = matches + 1
                     Q_array.append(Q_rand)
                     T_array.append(T_rand)
+
+                    
       
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
             efficiency = self.experiment.efficiency(Qgrid)
