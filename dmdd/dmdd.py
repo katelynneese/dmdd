@@ -65,22 +65,21 @@ wraps the function rate_UV.dRdQ
 
 """
 
-def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
+def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = [100.],
             time = 0, bins = 50, element = 'xenon',
             vlag_mean = 220., v_amplitude = 30.):
 
     """Passes a single time and a single energy to the function dRdQ based on time."""
 
     "Q must be passed to rate_UV.dRdQ as an array"
-    energy = np.array([Q])
+    energy = np.asarray(Q)
 
     "Calculate the vlag at these times based on the position of the sun"
     "V_amplitude is the velocity of earth * cos(angle of tilt with galatic plane)"
     "Time t = 0 corresponds to when the velocity is 220 m/s, which occurs in March**"
     v_lag = vlag_mean + v_amplitude*np.sin((2*np.pi*time)/(365.))
 
-    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole,
-                           element = element)
+    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole, element = element)
 
     "Return a 1D array with the rate based on the time and energy given"
     return rate_QT 
@@ -1184,8 +1183,9 @@ class Simulation_AM(object):
             
         """
         def PDF_graph(Q, time):
-            pdf = dRdQ_AM(Q = Q, time = time, element = self.element, mass = self.mass,
-                               sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
+            energy = np.asarray(Q)
+            pdf = dRdQ_AM(Q = energy, time = time, element = self.element, mass = self.mass,
+                          sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
                                                                     Tmin = self.Tmin, Tmax = self.Tmax,
                                                                     element = self.element, sigma_si = self.sigma_si,
                                                                     sigma_anapole = self.sigma_anapole, mass = self.mass)
@@ -1207,6 +1207,15 @@ class Simulation_AM(object):
             xlabel = 'Nuclear recoil energy [keV]'
             ylabel = 'Time [days]'
             X,Y = np.meshgrid(np.linspace(self.Qmin,self.Qmax,100), np.linspace(self.Tmin, self.Tmax,101))
+
+            points = []
+            for i,q in enumerate(X):
+                for j,t in enumerate(Y):
+                    point = PDF_graph(q,t)
+                    points.append(point)
+
+
+            
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(8,4)) # 2 subplots, fixes the figure size
             #xlabel = ax.set_xlabel(xlabel,fontsize=18)
             #ylabel = ax.set_ylabel(ylabel,fontsize=18)
@@ -1215,7 +1224,8 @@ class Simulation_AM(object):
                     label='True model ({})'.format(MODELNAME_TEX[self.model.name])
                 else:
                     label='True model'
-                ax1.imshow(PDF_graph(X,Y), cmap='blues', extent=[0,self.Qmax,0,self.Tmax]) # graphs a smooth gradient
+                ax1.imshow(points, cmap='blues', extent=[0,self.Qmax,0,self.Tmax]) # graphs a smooth gradient
+                #here X and Y are a meshgrid, an array of arrays... which doesn't work for PDF/ dRdQ_AM
                 ax2.plot(Q_array, T_array, 'o', ms=0.4, alpha=0.5)
                 ax2.set_xlim(self.Qmin, self.Qmax)
                 ax2.set_ylim(self.Tmin, self.Tmax)
