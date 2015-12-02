@@ -79,14 +79,11 @@ def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
     "Time t = 0 corresponds to when the velocity is 220 m/s, which occurs in March**"
     v_lag = vlag_mean + v_amplitude*np.sin((2*np.pi*time)/(365.))
 
-    "Send rate_UV.dRdQ all of the new vlags just calculated to find the rate at that time, as well as other defined parameters"
-    "v_lag only takes a scalar, so goes in a for loop"
-
     rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole,
                            element = element)
 
     "Return a 1D array with the rate based on the time and energy given"
-    return rate_QT
+    return rate_QT 
 
 
 
@@ -1102,8 +1099,9 @@ class Simulation_AM(object):
         if Nexpected > 0:
             npts = 10000
             Nevents = poisson.rvs(Nexpected) # the number to sum to
-            Q_array = np.zeros(Nevents) #array to keep track of energies
-            T_array = np.zeros(Nevents) #array to keep track of times
+            Q_array = [] #list to keep track of energies
+            T_array = [] #list to keep track of times
+            print Nevents
 
 
 
@@ -1117,11 +1115,12 @@ class Simulation_AM(object):
             matches = 0
             
             def PDF(Q, time):
-                return dRdQ_AM(Q = Q, time = time, element = self.element, mass = self.mass,
+                pdf = dRdQ_AM(Q = Q, time = time, element = self.element, mass = self.mass,
                                sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
                                                                     Tmin = self.Tmin, Tmax = self.Tmax,
                                                                     element = self.element, sigma_si = self.sigma_si,
                                                                     sigma_anapole = self.sigma_anapole, mass = self.mass)
+                return pdf[0] #maybe try here to make PDF not an array....
 
 
                 
@@ -1129,13 +1128,14 @@ class Simulation_AM(object):
             
 
             while matches < Nevents:
-                U = np.random.rand() #random number between 0 and 1 ? need a range to put here
+                U = np.random.rand()*1e-100 #random number between 0 and 1 ? need a range to put here
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
                 
                 if U < (PDF(Q_rand, T_rand)/env):
                     #increment matches
                     matches = matches + 1
+                    print "match found!"
                     Q_array.append(Q_rand)
                     T_array.append(T_rand)
 
@@ -1145,8 +1145,8 @@ class Simulation_AM(object):
             efficiency = self.experiment.efficiency(Qgrid)
 
         else:
-            Q_array = np.array([])
-            T_array = np.array([])
+            Q_array = []
+            T_array = []
             Nevents = 0
             Nexpected = 0
 
@@ -1183,35 +1183,42 @@ class Simulation_AM(object):
             If ``True``, then function will return lots of things.
             
         """
+        def PDF_graph(Q, time):
+            pdf = dRdQ_AM(Q = Q, time = time, element = self.element, mass = self.mass,
+                               sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
+                                                                    Tmin = self.Tmin, Tmax = self.Tmax,
+                                                                    element = self.element, sigma_si = self.sigma_si,
+                                                                    sigma_anapole = self.sigma_anapole, mass = self.mass)
+            return pdf #maybe try here to make PDF not an array....
 
-        Qhist,bins = np.histogram(self.Q,plot_nbins)
+        """Qhist,bins = np.histogram(self.Q,plot_nbins)
         Qbins = (bins[1:]+bins[:-1])/2. 
         binsize = Qbins[1]-Qbins[0] #valid only for uniform gridding.
         Qwidths = (bins[1:]-bins[:-1])/2.
         xerr = Qwidths
-        yerr = Qhist**0.5
+        yerr = Qhist**0.5"""
 
-        Qhist_theory = self.model_dRdQ*binsize*self.experiment.exposure*YEAR_IN_S*self.experiment.efficiency(self.model_Qgrid)
-        Qbins_theory = self.model_Qgrid
+        """Qhist_theory = self.model_dRdQ*binsize*self.experiment.exposure*YEAR_IN_S*self.experiment.efficiency(self.model_Qgrid)
+        Qbins_theory = self.model_Qgrid"""
 
         if make_plot:
             plt.figure()
             plt.title('%s (total events = %i)' % (self.experiment.name,self.N), fontsize=18)
             xlabel = 'Nuclear recoil energy [keV]'
             ylabel = 'Time [days]'
-            X,Y = np.meshgrid(np.linspace(Qmin,Qmax,100), np.linspace(t1,t2,101))
+            X,Y = np.meshgrid(np.linspace(self.Qmin,self.Qmax,100), np.linspace(self.Tmin, self.Tmax,101))
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(8,4)) # 2 subplots, fixes the figure size
-            xlabel = ax.set_xlabel(xlabel,fontsize=18)
-            ylabel = ax.set_ylabel(ylabel,fontsize=18)
+            #xlabel = ax.set_xlabel(xlabel,fontsize=18)
+            #ylabel = ax.set_ylabel(ylabel,fontsize=18)
             if plot_theory:
                 if self.model.name in MODELNAME_TEX.keys():
                     label='True model ({})'.format(MODELNAME_TEX[self.model.name])
                 else:
                     label='True model'
-                ax1.imshow(pdf(X,Y), cmap='blues', extent=[0,Qmax,0,t2]) # graphs a smooth gradient
+                ax1.imshow(PDF_graph(X,Y), cmap='blues', extent=[0,self.Qmax,0,self.Tmax]) # graphs a smooth gradient
                 ax2.plot(Q_array, T_array, 'o', ms=0.4, alpha=0.5)
-                ax2.set_xlim(Qmin, Qmax)
-                ax2.set_ylim(t1, t2)
+                ax2.set_xlim(self.Qmin, self.Qmax)
+                ax2.set_ylim(self.Tmin, self.Tmax)
                 
      
             plt.legend(prop={'size':20},numpoints=1)
