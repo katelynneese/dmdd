@@ -1127,7 +1127,7 @@ class Simulation_AM(object):
             
 
             while matches < Nevents:
-                U = np.random.rand()*1e-100 #random number between 0 and 1 ? need a range to put here
+                U = np.random.rand()*1e-5 #random number between 0 and 1e-4 ? need a range to put here
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
                 
