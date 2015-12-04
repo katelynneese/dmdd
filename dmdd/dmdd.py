@@ -65,7 +65,7 @@ wraps the function rate_UV.dRdQ
 
 """
 
-def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = [100.],
+def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
             time = 0, bins = 50, element = 'xenon',
             vlag_mean = 220., v_amplitude = 30.):
 
@@ -73,16 +73,16 @@ def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = [100.],
 
     "Q must be passed to rate_UV.dRdQ as an array"
     energy = np.asarray(Q)
-
     "Calculate the vlag at these times based on the position of the sun"
     "V_amplitude is the velocity of earth * cos(angle of tilt with galatic plane)"
     "Time t = 0 corresponds to when the velocity is 220 m/s, which occurs in March**"
     v_lag = vlag_mean + v_amplitude*np.sin((2*np.pi*time)/(365.))
+    #print type(v_lag) #vlag must be a number not an array
 
     rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole, element = element)
 
     "Return a 1D array with the rate based on the time and energy given"
-    return rate_QT 
+    return rate_QT
 
 
 
@@ -99,13 +99,26 @@ def integral(Qmin, Qmax, Tmin, Tmax, Qpoints = 1000., Tpoints = 1000.,
     total_sum = []
     for i,Q in enumerate(Q_box):
         for j,T in enumerate(T_box):
-            a_sum = np.sum(function(Q = Q, time = T, sigma_si = sigma_si, sigma_anapole = sigma_anapole,
+            a_sum = np.sum(function(Q = np.asarray(Q), time = T, sigma_si = sigma_si, sigma_anapole = sigma_anapole,
                                     mass = mass, element = element, v_amplitude = v_amplitude))
             total_sum.append(a_sum)
     
     function_sum = np.sum(total_sum)
     return volume*function_sum
     
+
+
+def PDF(Q, time, element, mass, sigma_si, sigma_anapole, Qmin, Qmax, Tmin, Tmax):
+    pdf = dRdQ_AM(Q = np.asarray(Q), time = time, element = element, mass = mass,
+    sigma_si = sigma_si, sigma_anapole = sigma_anapole) * 1 / integral(Qmin = np.asarray(Qmin), Qmax = np.asarray(Qmax),
+                                                                                Tmin = Tmin, Tmax = Tmax,
+                                                                                element = element, sigma_si = sigma_si,
+                                                                                sigma_anapole = sigma_anapole, mass = mass)
+
+    return pdf #for now removed efficiency and made it 1, remember to add it as a variable and pass it later
+
+
+
 
 
 """
@@ -1088,6 +1101,8 @@ class Simulation_AM(object):
         else:
             if not self.silent:
                 print "simulation had %i events (expected %.0f)." % (self.N,self.model_N)
+
+        
     
        ################################ the part that changes ############################################## 
     def simulate_data(self):
@@ -1100,7 +1115,6 @@ class Simulation_AM(object):
             Nevents = poisson.rvs(Nexpected) # the number to sum to
             Q_array = [] #list to keep track of energies
             T_array = [] #list to keep track of times
-            print Nevents
 
 
 
@@ -1112,16 +1126,6 @@ class Simulation_AM(object):
             env = 1.
             # set matches = 0, loop through random numbers to find matches
             matches = 0
-            
-            def PDF(Q, time):
-                pdf = dRdQ_AM(Q = Q, time = time, element = self.element, mass = self.mass,
-                               sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
-                                                                    Tmin = self.Tmin, Tmax = self.Tmax,
-                                                                    element = self.element, sigma_si = self.sigma_si,
-                                                                    sigma_anapole = self.sigma_anapole, mass = self.mass)
-                return pdf[0] #maybe try here to make PDF not an array....
-
-
                 
                 ##divided by the integral, integral coded above
             
@@ -1131,14 +1135,14 @@ class Simulation_AM(object):
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
                 
-                if U < (PDF(Q_rand, T_rand)/env):
+                if U < (PDF(Q_rand, T_rand, element = self.element, mass = self.mass,
+                                        sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
+                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)/env):
                     #increment matches
                     matches = matches + 1
-                    print "match found!"
                     Q_array.append(Q_rand)
                     T_array.append(T_rand)
 
-                    
       
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
             efficiency = self.experiment.efficiency(Qgrid)
@@ -1151,7 +1155,7 @@ class Simulation_AM(object):
 
         if not self.silent:
             print "simulated: %i events (expected %.0f)." % (Nevents,Nexpected)
-        return Q_array
+        return Q_array, T_array
     
     
     #############################      #######################################
@@ -1182,14 +1186,6 @@ class Simulation_AM(object):
             If ``True``, then function will return lots of things.
             
         """
-        def PDF_graph(Q, time):
-            energy = np.asarray(Q)
-            pdf = dRdQ_AM(Q = energy, time = time, element = self.element, mass = self.mass,
-                          sigma_si = self.sigma_si, sigma_anapole = self.sigma_anapole) * efficiency / integral(Qmin = self.Qmin, Qmax = self.Qmax,
-                                                                    Tmin = self.Tmin, Tmax = self.Tmax,
-                                                                    element = self.element, sigma_si = self.sigma_si,
-                                                                    sigma_anapole = self.sigma_anapole, mass = self.mass)
-            return pdf #maybe try here to make PDF not an array....
 
         """Qhist,bins = np.histogram(self.Q,plot_nbins)
         Qbins = (bins[1:]+bins[:-1])/2. 
@@ -1201,43 +1197,46 @@ class Simulation_AM(object):
         """Qhist_theory = self.model_dRdQ*binsize*self.experiment.exposure*YEAR_IN_S*self.experiment.efficiency(self.model_Qgrid)
         Qbins_theory = self.model_Qgrid"""
 
+        SimAM = Simulation_AM()
+        print SimAM.simulate_data()
+
+
+        
         if make_plot:
-            plt.figure()
             plt.title('%s (total events = %i)' % (self.experiment.name,self.N), fontsize=18)
             xlabel = 'Nuclear recoil energy [keV]'
             ylabel = 'Time [days]'
-            X,Y = np.meshgrid(np.linspace(self.Qmin,self.Qmax,100), np.linspace(self.Tmin, self.Tmax,101))
-
-            points = []
-            for i,q in enumerate(X):
-                for j,t in enumerate(Y):
-                    point = PDF_graph(q,t)
-                    points.append(point)
-
-
+            X,Y = np.meshgrid(np.linspace(self.Qmin,self.Qmax,3), np.linspace(self.Tmin, self.Tmax,4))
             
+            points = []
+            print points
+            for i,q in enumerate(X): # q here is an array full of values
+                for j,t in enumerate(Y): # t here is an array full of values
+                    for k, qval in enumerate(q):
+                        for l, tval in enumerate(t):
+
+                            point = PDF(Q = np.asarray([qval]), time = tval, element = self.element, mass = self.mass,
+                                        sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
+                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)
+                            points.append(point)
+
+
+            Q_array, T_array = Simulation_AM.simulate_data()
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(8,4)) # 2 subplots, fixes the figure size
-            #xlabel = ax.set_xlabel(xlabel,fontsize=18)
-            #ylabel = ax.set_ylabel(ylabel,fontsize=18)
-            if plot_theory:
-                if self.model.name in MODELNAME_TEX.keys():
-                    label='True model ({})'.format(MODELNAME_TEX[self.model.name])
-                else:
-                    label='True model'
-                ax1.imshow(points, cmap='blues', extent=[0,self.Qmax,0,self.Tmax]) # graphs a smooth gradient
-                #here X and Y are a meshgrid, an array of arrays... which doesn't work for PDF/ dRdQ_AM
-                ax2.plot(Q_array, T_array, 'o', ms=0.4, alpha=0.5)
-                ax2.set_xlim(self.Qmin, self.Qmax)
-                ax2.set_ylim(self.Tmin, self.Tmax)
+            ax1.imshow(points, cmap='blues', extent=[self.Qmin,self.Qmax,self.Tmin,self.Tmax]) # graphs a smooth gradient
+            #here X and Y are a meshgrid, an array of arrays... which doesn't work for PDF/ dRdQ_AM
+            ax2.plot(Q_array, T_array, 'o', ms=0.4, alpha=0.5)
+            ax2.set_xlim(self.Qmin, self.Qmax)
+            ax2.set_ylim(self.Tmin, self.Tmax)
                 
      
-            plt.legend(prop={'size':20},numpoints=1)
+           # plt.legend(prop={'size':20},numpoints=1)
             if save_plot:
                 plt.savefig(self.plotfile, bbox_extra_artists=[xlabel, ylabel], bbox_inches='tight')
 
 
-        if return_plot_items:
-            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
+        #if return_plot_items:
+            #return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
     
 
 
