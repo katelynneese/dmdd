@@ -1,3 +1,4 @@
+from numba import jit
 try:
     import rate_NR 
     import rate_genNR  
@@ -64,9 +65,9 @@ Begin writing wrapper function called dRdR_AM here
 wraps the function rate_UV.dRdQ
 
 """
-
+#@jit
 def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
-            time = 0, bins = 50, element = 'xenon',
+            time = 0, element = 'xenon',
             vlag_mean = 220., v_amplitude = 30.):
 
     """Passes a single time and a single energy to the function dRdQ based on time."""
@@ -82,10 +83,10 @@ def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
     rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole, element = element)
 
     "Return a 1D array with the rate based on the time and energy given"
-    return rate_QT
+    return rate_QT[0]
 
 
-
+#@jit
 def integral(Qmin, Qmax, Tmin, Tmax, Qpoints = 1000., Tpoints = 1000.,
              function = dRdQ_AM, sigma_si= 0, sigma_anapole = 0, mass = 50., element = 'xenon', v_amplitude = 30.):
     """Computes the numerical integral of a 2d function. Takes a 2d function, x min and max, y min and max.
@@ -107,15 +108,17 @@ def integral(Qmin, Qmax, Tmin, Tmax, Qpoints = 1000., Tpoints = 1000.,
     return volume*function_sum
     
 
-
+#@jit
 def PDF(Q, time, element, mass, sigma_si, sigma_anapole, Qmin, Qmax, Tmin, Tmax):
-    pdf = dRdQ_AM(Q = np.asarray(Q), time = time, element = element, mass = mass,
-    sigma_si = sigma_si, sigma_anapole = sigma_anapole) * 1 / integral(Qmin = np.asarray(Qmin), Qmax = np.asarray(Qmax),
-                                                                                Tmin = Tmin, Tmax = Tmax,
-                                                                                element = element, sigma_si = sigma_si,
-                                                                                sigma_anapole = sigma_anapole, mass = mass)
+    drdq = dRdQ_AM(Q=np.asarray(Q), time=time, element = element, mass = mass,
+    sigma_si = sigma_si, sigma_anapole = sigma_anapole)
+    norm = integral(Qmin = np.asarray(Qmin),
+                    Qmax = np.asarray(Qmax),
+                    Tmin = Tmin, Tmax = Tmax,
+                    element = element, sigma_si = sigma_si,
+                    sigma_anapole = sigma_anapole, mass = mass)
 
-    return pdf #for now removed efficiency and made it 1, remember to add it as a variable and pass it later
+    return drdq/norm[0] #for now removed efficiency and made it 1
 
 
 
@@ -963,14 +966,20 @@ class Simulation_AM(object):
                  element = 'xenon', sigma_si = 0, sigma_anapole = 0,
                  mass = 50., v_amplitude = 30.,
                  Tmin = 0, Tmax = 365, #start and stop times for simuation
-                 path=SIM_PATH, force_sim=False,
+                 path=SIM_PATH, force_sim=True,
                  asimov=False, nbins_asimov=20,
                  plot_nbins=20, plot_theory=True, 
                  silent=False):
+
+
+        self.Q_array = [] #list to keep track of energies
+        self.T_array = [] #list to keep track of times
+
+        
         self.silent = silent
         if not set(parvals.keys())==set(model.param_names):
             raise ValueError('Must pass parameter value dictionary corresponding exactly to model.param_names')
-        
+        self.name = name
         self.model = model #underlying model
         self.experiment = experiment
         self.Qmax = Qmax
@@ -1021,23 +1030,7 @@ class Simulation_AM(object):
         self.model_Qgrid = np.linspace(experiment.Qmin,experiment.Qmax,1000)
         efficiencies = experiment.efficiency(self.model_Qgrid)
         self.model_dRdQ = self.model.dRdQ(self.model_Qgrid,**dRdQ_params)
-        R_integrand =  self.model_dRdQ * efficiencies                       ##### here is where the integral is?
-        
-        """writing integrand for the new dRdQ_AM-- need help here though
-        
-        dRdQ_AM_params = model.default_rate_parameters.copy()
-
-        for i,par in enumerate(model.param_names): #model parameters
-            dRdQ_AM_params[par] = self.param_values[i]
-            allpars[par] = self.param_values[i]
-
-        
-        self.dRdQ_AM_params = dRdQ_AM_params 
-        self.model_dRdQ_AM = self.model.dRdQ_AM(self.model_Qgrid, **dRdQ_AM_params)
-        RAM_integrand = self.model_dRdQ_AM * efficiencies 
-        """
-        
-        
+        R_integrand =  self.model_dRdQ * efficiencies 
         self.model_R = np.trapz(R_integrand,self.model_Qgrid)
         self.model_N = self.model_R * experiment.exposure * YEAR_IN_S
     
@@ -1059,17 +1052,16 @@ class Simulation_AM(object):
         self.picklefile = '{}/{}.pkl'.format(self.path,self.file_basename)
     
         #control to make sure simulations are forced if they need to be
-        if os.path.exists(self.picklefile) and os.path.exists(self.datafile):
-            fin = open(self.picklefile,'rb')
-            allpars_old = pickle.load(fin)
-            fin.close()
-            if not compare_dictionaries(self.allpars,allpars_old):
-                print('Existing simulation does not match current parameters.  Forcing simulation.\n\n')
-                force_sim = True
+        #if os.path.exists(self.picklefile) and os.path.exists(self.datafile):
+            #fin = open(self.picklefile,'rb')
+            #allpars_old = pickle.load(fin)
+            #fin.close()
+            #if not compare_dictionaries(self.allpars,allpars_old):
+                #print('Existing simulation does not match current parameters.  Forcing simulation.\n\n')
+                #force_sim = True
                 
-        else:
-            print 'Simulation data and/or pickle file does not exist. Forcing simulation.\n\n'
-            force_sim = True
+        print 'Simulation data and/or pickle file does not exist. Forcing simulation.\n\n'
+        force_sim = True
       
         if force_sim:
             if asimov:
@@ -1104,17 +1096,18 @@ class Simulation_AM(object):
 
         
     
-       ################################ the part that changes ############################################## 
+       ################################  ############################################## 
     def simulate_data(self):
         """
         Do Poisson simulation of data according to scattering model's dR/dQ.
-        """ 
+        """
+
+
+        
         Nexpected = self.model_N
         if Nexpected > 0:
             npts = 10000
             Nevents = poisson.rvs(Nexpected) # the number to sum to
-            Q_array = [] #list to keep track of energies
-            T_array = [] #list to keep track of times
 
 
 
@@ -1140,8 +1133,8 @@ class Simulation_AM(object):
                                         Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)/env):
                     #increment matches
                     matches = matches + 1
-                    Q_array.append(Q_rand)
-                    T_array.append(T_rand)
+                    self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
+                    self.T_array.append(T_rand)
 
       
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
@@ -1155,11 +1148,10 @@ class Simulation_AM(object):
 
         if not self.silent:
             print "simulated: %i events (expected %.0f)." % (Nevents,Nexpected)
-        return Q_array, T_array
+        return self.Q_array, self.T_array
     
     
     #############################      #######################################
-	    
     def plot_data(self, plot_nbins=20, plot_theory=True, save_plot=True,
                   make_plot=True, return_plot_items=False):
         """
@@ -1196,47 +1188,43 @@ class Simulation_AM(object):
 
         """Qhist_theory = self.model_dRdQ*binsize*self.experiment.exposure*YEAR_IN_S*self.experiment.efficiency(self.model_Qgrid)
         Qbins_theory = self.model_Qgrid"""
-
-        SimAM = Simulation_AM()
-        print SimAM.simulate_data()
-
-
         
         if make_plot:
-            plt.title('%s (total events = %i)' % (self.experiment.name,self.N), fontsize=18)
-            xlabel = 'Nuclear recoil energy [keV]'
-            ylabel = 'Time [days]'
-            X,Y = np.meshgrid(np.linspace(self.Qmin,self.Qmax,3), np.linspace(self.Tmin, self.Tmax,4))
-            
-            points = []
-            print points
-            for i,q in enumerate(X): # q here is an array full of values
-                for j,t in enumerate(Y): # t here is an array full of values
-                    for k, qval in enumerate(q):
-                        for l, tval in enumerate(t):
 
-                            point = PDF(Q = np.asarray([qval]), time = tval, element = self.element, mass = self.mass,
-                                        sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
-                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)
-                            points.append(point)
-
-
-            Q_array, T_array = Simulation_AM.simulate_data()
-            fig, (ax1,ax2) = plt.subplots(1,2, figsize=(8,4)) # 2 subplots, fixes the figure size
-            ax1.imshow(points, cmap='blues', extent=[self.Qmin,self.Qmax,self.Tmin,self.Tmax]) # graphs a smooth gradient
+            t = np.linspace(0, self.Tmax, 21)
+            q = np.linspace(0, self.Qmax, 20)
+            grid = []
+            for i,y in enumerate(t):
+                minigrid = []
+                for j,x in enumerate(q):
+                    point = PDF(Q=[x], time=y, element = self.element, mass = self.mass,
+                                sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
+                                Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
+                                Tmin = self.Tmin, Tmax = self.Tmax)
+                    minigrid.append(point[0])
+                grid.append(minigrid)
+            fig, (ax1,ax2) = plt.subplots(1,2, figsize=(10,5)) # 2 subplots, fixes the figure size
+            fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
+            ax1.imshow(grid, cmap='Blues', extent=[0,self.Qmax,0,self.Tmax], aspect='auto') # graphs a smooth gradient
+            #cbar = plt.colorbar(image)
+            #cbar.set_clim(vmin=-200, vmax=200)
+            xlabel = ax1.set_xlabel('Energy in keV')
+            ylabel = ax1.set_ylabel('Time in Days')
             #here X and Y are a meshgrid, an array of arrays... which doesn't work for PDF/ dRdQ_AM
-            ax2.plot(Q_array, T_array, 'o', ms=0.4, alpha=0.5)
+            ax2.plot(self.Q_array, self.T_array, 'o', ms=0.4, color = '#000000') ####### alpha = 0.9
+            xlabel2 = ax2.set_xlabel('Energy in keV')
+            ylabel2 = ax2.set_ylabel('Time in Days')
             ax2.set_xlim(self.Qmin, self.Qmax)
             ax2.set_ylim(self.Tmin, self.Tmax)
-                
-     
-           # plt.legend(prop={'size':20},numpoints=1)
+
+            
+            #plt.legend(prop={'size':20},numpoints=1)
             if save_plot:
-                plt.savefig(self.plotfile, bbox_extra_artists=[xlabel, ylabel], bbox_inches='tight')
+                plt.savefig(self.plotfile, bbox_extra_artists=[xlabel2, ylabel2], bbox_inches='tight')
 
 
-        #if return_plot_items:
-            #return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
+        if return_plot_items:
+            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
     
 
 
