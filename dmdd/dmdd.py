@@ -1123,7 +1123,7 @@ class Simulation_AM(object):
                 ##divided by the integral, integral coded above
             
 
-            while matches < Nevents:
+            while matches < 500:   # temporarily changed number from "Nevents" to 500 to graph more points, will change back
                 U = np.random.rand()*1e-5 #random number between 0 and 1e-4 ? need a range to put here
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
@@ -1190,7 +1190,7 @@ class Simulation_AM(object):
         Qbins_theory = self.model_Qgrid"""
         
         if make_plot:
-
+            print "found all matches, printing now" #so I can tell when it begins graphing- will remove later
             t = np.linspace(0, self.Tmax, 31)
             q = np.linspace(0, self.Qmax, 30)
             grid = []
