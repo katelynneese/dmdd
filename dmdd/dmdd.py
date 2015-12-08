@@ -1197,20 +1197,21 @@ class Simulation_AM(object):
             for i,y in enumerate(t):
                 minigrid = []
                 for j,x in enumerate(q):
-                    mean = PDF(Q=[x], time=0, element = self.element, mass = self.mass,
+                    """mean = PDF(Q=[x], time=0, element = self.element, mass = self.mass,
                                 sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                 Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
-                                Tmin = self.Tmin, Tmax = self.Tmax)
+                                Tmin = self.Tmin, Tmax = self.Tmax)""" 
                     #the time is set to 0 because that is when v = 220 km/s, the average v of sun around the galaxy center
+                    #mean commented out for now because not using
                     
                     point = PDF(Q=[x], time=y, element = self.element, mass = self.mass,
                                 sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                 Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
                                 Tmin = self.Tmin, Tmax = self.Tmax)
-                    minigrid.append(point[0] - mean[0])
+                    minigrid.append(point[0]) #subtract mean here to make residual plots
                 grid.append(minigrid)
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(10,5)) # 2 subplots, fixes the figure size
-            fig.suptitle("Number of Residual Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
+            fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
             #ax1.set_yscale('log') ########
             #ax1.set_xscale('log') ########
             ax1.imshow(grid, cmap='hot', extent=[0,self.Qmax,0,self.Tmax], aspect='auto') # graphs a smooth gradient
