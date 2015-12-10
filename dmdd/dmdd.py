@@ -1121,22 +1121,27 @@ class Simulation_AM(object):
             matches = 0
                 
                 ##divided by the integral, integral coded above
-            
+                
+            if self.sigma_anapole != 0:
+                u_range = 250 #sigma_anapole's pdf goes upwards of 150
+            else:
+                u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            while matches < 500:   # temporarily changed number from "Nevents" to 500 to graph more points, will change back
-                U = np.random.rand()*1e-5 #random number between 0 and 1e-4 ? need a range to put here
+            while matches < Nevents:
+                U = np.random.rand()*u_range #random number - range based on sigma_anapole or sigma_si above
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
-                
-                if U < (PDF(Q_rand, T_rand, element = self.element, mass = self.mass,
+                pdf_value = PDF(Q_rand, T_rand, element = self.element, mass = self.mass,
                                         sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
-                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)/env):
+                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)/env
+                if U < pdf_value:
                     #increment matches
                     matches = matches + 1
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
+                    #print "Q = %f ; T = %f ; pdf = %f ; U = %f ." % (Q_rand, T_rand, pdf_value, U)
 
-      
+
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
             efficiency = self.experiment.efficiency(Qgrid)
 
@@ -1156,24 +1161,19 @@ class Simulation_AM(object):
                   make_plot=True, return_plot_items=False):
         """
         Plot simuated data.
-
         
         
         :param plot_nbins:
             Number of bins for plotting.
-
         :param plot_theory:
             Whether to overplot the theory rate curve on top of the
             data points.
-
         :param save_plot:
             Whether to save plot under ``self.plotfile``.
-
         :param make_plot:
             Whether to make the plot.  No reason really to ever
             be false unless you only want the "plot items"
             returned if ``return_plot_items=True`` is passed.
-
         :param return_plot_items:
             If ``True``, then function will return lots of things.
             
@@ -1190,9 +1190,8 @@ class Simulation_AM(object):
         Qbins_theory = self.model_Qgrid"""
         
         if make_plot:
-            print "found all matches, printing now" #so I can tell when it begins graphing- will remove later
-            t = np.linspace(0, self.Tmax, 31)
-            q = np.linspace(0, self.Qmax, 30)
+            t = np.linspace(0, self.Tmax, 21)
+            q = np.linspace(0, self.Qmax, 20)
             grid = []
             for i,y in enumerate(t):
                 minigrid = []
@@ -1220,7 +1219,7 @@ class Simulation_AM(object):
             xlabel = ax1.set_xlabel('Energy in keV')
             ylabel = ax1.set_ylabel('Time in Days')
             #here X and Y are a meshgrid, an array of arrays... which doesn't work for PDF/ dRdQ_AM
-            ax2.plot(self.Q_array, self.T_array, 'o', ms=0.4, color = '#000000') ####### alpha = 0.9
+            ax2.plot(self.Q_array, self.T_array, 'ob', ms=0.4) ####### alpha = 0.9
             xlabel2 = ax2.set_xlabel('Energy in keV')
             ylabel2 = ax2.set_ylabel('Time in Days')
             ax2.set_xlim(self.Qmin, self.Qmax)
@@ -1245,6 +1244,7 @@ class Simulation_AM(object):
 
 
 "#################################SIMULATION AM END HERE################################################"
+
 
 
 
