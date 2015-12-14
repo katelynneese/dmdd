@@ -1128,19 +1128,21 @@ class Simulation_AM(object):
                 u_range = 800 #sigma_si's pdf goes upwards to 700
 
             while matches < Nevents:
-                U = np.random.rand()*u_range #random number - range based on sigma_anapole or sigma_si above
+                U = u_range*np.random.rand() #random number - range based on sigma_anapole or sigma_si above
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
                 pdf_value = PDF(Q_rand, T_rand, element = self.element, mass = self.mass,
                                         sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
-                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)/env
+                                        Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)
+                print pdf_value
+                #envelope is 1 so don't need to divide by anything
+                
                 if U < pdf_value:
                     #increment matches
                     matches = matches + 1
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
-                    #print "Q = %f ; T = %f ; pdf = %f ; U = %f ." % (Q_rand, T_rand, pdf_value, U)
-
+                    print matches
 
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
             efficiency = self.experiment.efficiency(Qgrid)
