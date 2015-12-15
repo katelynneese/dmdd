@@ -1122,19 +1122,23 @@ class Simulation_AM(object):
                 
                 ##divided by the integral, integral coded above
                 
-            if self.sigma_anapole != 0:
-                u_range = 250 #sigma_anapole's pdf goes upwards of 150
-            else:
-                u_range = 800 #sigma_si's pdf goes upwards to 700
+            #if self.sigma_anapole != 0:
+                #u_range = 250 #sigma_anapole's pdf goes upwards of 150
+            #else:
+                #u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            while matches < Nevents:
+            u_range = 800 #temporarily hard coding this to find anapole and si values for lower energies
+            # 5 for middle Q ranges
+            #will put an if statement in later
+
+            while matches < Nevents: #more events to check and see if it modulates, changed from Nevents
                 U = u_range*np.random.rand() #random number - range based on sigma_anapole or sigma_si above
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
                 pdf_value = PDF(Q_rand, T_rand, element = self.element, mass = self.mass,
                                         sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                         Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]), Tmin = self.Tmin, Tmax = self.Tmax)
-                print pdf_value
+                #print pdf_value
                 #envelope is 1 so don't need to divide by anything
                 
                 if U < pdf_value:
@@ -1142,7 +1146,10 @@ class Simulation_AM(object):
                     matches = matches + 1
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
-                    print matches
+                    
+                    if matches % 10 == 0:
+                        print matches #every 10 particles found print this so that I know the simulation is still running
+                        #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
             efficiency = self.experiment.efficiency(Qgrid)
@@ -1190,18 +1197,31 @@ class Simulation_AM(object):
 
         """Qhist_theory = self.model_dRdQ*binsize*self.experiment.exposure*YEAR_IN_S*self.experiment.efficiency(self.model_Qgrid)
         Qbins_theory = self.model_Qgrid"""
+
+
+        #testing a 2d histogram with hexagonal cells
+        plt.hexbin(self.Q_array, self.T_array, cmap=plt.cm.YlOrRd_r, gridsize = 20) #changing gridsize to see if that changes anything
+        plt.axis([0, 20, 0, 365])
+        plt.title("Hexagon binning for Simulated Events")
+        cb = plt.colorbar()
+        cb.set_label('counts')
+
+
+
+
         
-        if make_plot:
-            t = np.linspace(0, self.Tmax, 21)
-            q = np.linspace(0, self.Qmax, 20)
+               
+        """if make_plot:
+            t = np.linspace(self.Tmin, self.Tmax, 31)
+            q = np.linspace(self.Qmin, self.Qmax, 30)
             grid = []
             for i,y in enumerate(t):
                 minigrid = []
                 for j,x in enumerate(q):
-                    """mean = PDF(Q=[x], time=0, element = self.element, mass = self.mass,
+                    mean = PDF(Q=[x], time=0, element = self.element, mass = self.mass,
                                 sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                 Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
-                                Tmin = self.Tmin, Tmax = self.Tmax)""" 
+                                Tmin = self.Tmin, Tmax = self.Tmax)
                     #the time is set to 0 because that is when v = 220 km/s, the average v of sun around the galaxy center
                     #mean commented out for now because not using
                     
@@ -1215,7 +1235,8 @@ class Simulation_AM(object):
             fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
             #ax1.set_yscale('log') ########
             #ax1.set_xscale('log') ########
-            ax1.imshow(grid, cmap='hot', extent=[0,self.Qmax,0,self.Tmax], aspect='auto') # graphs a smooth gradient
+            ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,0,self.Tmax], aspect='auto') # graphs a smooth gradient
+            # for some reason, extent can't start at self.Qmin, but can start at 5???
             #cbar = plt.colorbar(image)
             #cbar.set_clim(vmin=-200, vmax=200)
             xlabel = ax1.set_xlabel('Energy in keV')
@@ -1234,10 +1255,7 @@ class Simulation_AM(object):
 
 
         if return_plot_items:
-            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
-    
-
-
+            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize"""
 
 
 
