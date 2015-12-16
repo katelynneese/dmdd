@@ -1127,7 +1127,7 @@ class Simulation_AM(object):
             #else:
                 #u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            u_range = 800 #temporarily hard coding this to find anapole and si values for lower energies
+            u_range = 5 #temporarily hard coding this to find anapole and si values for lower energies
             # 5 for middle Q ranges
             #will put an if statement in later
 
@@ -1201,7 +1201,7 @@ class Simulation_AM(object):
 
         #testing a 2d histogram with hexagonal cells
         plt.hexbin(self.Q_array, self.T_array, cmap=plt.cm.YlOrRd_r, gridsize = 20) #changing gridsize to see if that changes anything
-        plt.axis([0, 20, 0, 365])
+        plt.axis([5, 20, 0, 365])
         plt.title("Hexagon binning for Simulated Events")
         cb = plt.colorbar()
         cb.set_label('counts')
