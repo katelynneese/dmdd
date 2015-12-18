@@ -1127,9 +1127,10 @@ class Simulation_AM(object):
             #else:
                 #u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            u_range = 5 #temporarily hard coding this to find anapole and si values for lower energies
+            u_range = 3 #temporarily hard coding this to find anapole and si values for lower energies
             # 5 for middle Q ranges
             #will put an if statement in later
+            print Nevents
 
             while matches < Nevents: #more events to check and see if it modulates, changed from Nevents
                 U = u_range*np.random.rand() #random number - range based on sigma_anapole or sigma_si above
@@ -1147,7 +1148,7 @@ class Simulation_AM(object):
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
                     
-                    if matches % 10 == 0:
+                    if matches % 100 == 0:
                         print matches #every 10 particles found print this so that I know the simulation is still running
                         #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
@@ -1199,12 +1200,21 @@ class Simulation_AM(object):
         Qbins_theory = self.model_Qgrid"""
 
 
-        #testing a 2d histogram with hexagonal cells
+        """#testing a 2d histogram with hexagonal cells
         plt.hexbin(self.Q_array, self.T_array, cmap=plt.cm.YlOrRd_r, gridsize = 20) #changing gridsize to see if that changes anything
-        plt.axis([5, 20, 0, 365])
+        plt.axis([self.Qmin, self.Qmax, 0, 365])
         plt.title("Hexagon binning for Simulated Events")
         cb = plt.colorbar()
-        cb.set_label('counts')
+        cb.set_label('counts')"""
+
+        plt.figure(1)
+        #histogram to see number of events at particular times
+        plt.hist(self.T_array, 30, normed = False, histtype= 'step')
+        plt.xlabel("Time")
+        plt.ylabel("Number of events at time T")
+
+
+
 
 
 
