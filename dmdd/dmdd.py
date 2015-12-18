@@ -1148,7 +1148,7 @@ class Simulation_AM(object):
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
                     
-                    if matches % 100 == 0:
+                    if matches % 1000 == 0:
                         print matches #every 10 particles found print this so that I know the simulation is still running
                         #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
@@ -1209,7 +1209,7 @@ class Simulation_AM(object):
 
         plt.figure(1)
         #histogram to see number of events at particular times
-        plt.hist(self.T_array, 30, normed = False, histtype= 'step')
+        plt.hist(self.T_array, 50, normed = False, histtype= 'step')
         plt.xlabel("Time")
         plt.ylabel("Number of events at time T")
 
