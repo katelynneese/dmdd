@@ -79,8 +79,9 @@ def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
     "Time t = 0 corresponds to when the velocity is 220 m/s, which occurs in March**"
     v_lag = vlag_mean + v_amplitude*np.sin((2*np.pi*time)/(365.))
     #print type(v_lag) #vlag must be a number not an array
-
-    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, mass = mass, sigma_si = sigma_si, sigma_anapole = sigma_anapole, element = element)
+    rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, 
+                        mass = mass, sigma_si = sigma_si,
+                        sigma_anapole = sigma_anapole, element = element)
 
     "Return a 1D array with the rate based on the time and energy given"
     return rate_QT[0]
@@ -112,13 +113,13 @@ def integral(Qmin, Qmax, Tmin, Tmax, Qpoints = 1000., Tpoints = 1000.,
 def PDF(Q, time, element, mass, sigma_si, sigma_anapole, Qmin, Qmax, Tmin, Tmax):
     drdq = dRdQ_AM(Q=np.asarray(Q), time=time, element = element, mass = mass,
     sigma_si = sigma_si, sigma_anapole = sigma_anapole)
-    norm = integral(Qmin = np.asarray(Qmin),
-                    Qmax = np.asarray(Qmax),
-                    Tmin = Tmin, Tmax = Tmax,
-                    element = element, sigma_si = sigma_si,
-                    sigma_anapole = sigma_anapole, mass = mass)
+    #norm = integral(Qmin = np.asarray(Qmin),
+                    #Qmax = np.asarray(Qmax),
+                    #Tmin = Tmin, Tmax = Tmax,
+                    #element = element, sigma_si = sigma_si,
+                    #sigma_anapole = sigma_anapole, mass = mass)
 
-    return drdq/norm[0] #for now removed efficiency and made it 1
+    return drdq#/norm[0] #for now removed efficiency and made it 1 ADD NORM BACK IN LATER
 
 
 
@@ -1148,7 +1149,7 @@ class Simulation_AM(object):
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
                     
-                    if matches % 1000 == 0:
+                    if matches % 100 == 0:
                         print matches #every 10 particles found print this so that I know the simulation is still running
                         #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
@@ -1222,30 +1223,23 @@ class Simulation_AM(object):
         
                
         """if make_plot:
-            t = np.linspace(self.Tmin, self.Tmax, 31)
-            q = np.linspace(self.Qmin, self.Qmax, 30)
+            t = np.linspace(self.Tmin, self.Tmax, 21)
+            q = np.linspace(self.Qmin, self.Qmax, 20)
             grid = []
             for i,y in enumerate(t):
                 minigrid = []
                 for j,x in enumerate(q):
-                    mean = PDF(Q=[x], time=0, element = self.element, mass = self.mass,
-                                sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
-                                Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
-                                Tmin = self.Tmin, Tmax = self.Tmax)
-                    #the time is set to 0 because that is when v = 220 km/s, the average v of sun around the galaxy center
-                    #mean commented out for now because not using
-                    
                     point = PDF(Q=[x], time=y, element = self.element, mass = self.mass,
                                 sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                 Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
                                 Tmin = self.Tmin, Tmax = self.Tmax)
-                    minigrid.append(point[0]) #subtract mean here to make residual plots
+                    minigrid.append(point[0])
                 grid.append(minigrid)
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(10,5)) # 2 subplots, fixes the figure size
             fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
             #ax1.set_yscale('log') ########
             #ax1.set_xscale('log') ########
-            ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,0,self.Tmax], aspect='auto') # graphs a smooth gradient
+            ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto') # graphs a smooth gradient
             # for some reason, extent can't start at self.Qmin, but can start at 5???
             #cbar = plt.colorbar(image)
             #cbar.set_clim(vmin=-200, vmax=200)
