@@ -119,7 +119,7 @@ def PDF(Q, time, element, mass, sigma_si, sigma_anapole, Qmin, Qmax, Tmin, Tmax)
                     #element = element, sigma_si = sigma_si,
                     #sigma_anapole = sigma_anapole, mass = mass)
 
-    return drdq#/norm[0] #for now removed efficiency and made it 1 ADD NORM BACK IN LATER
+    return drdq#/norm[0] #REMOVED NORMALIZATION FOR NOW, ADD BACK IN LATER
 
 
 
@@ -1128,12 +1128,12 @@ class Simulation_AM(object):
             #else:
                 #u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            u_range = 3 #temporarily hard coding this to find anapole and si values for lower energies
+            u_range = 1e-10 #temporarily hard coding this to find anapole and si values for lower energies
             # 5 for middle Q ranges
             #will put an if statement in later
             print Nevents
 
-            while matches < Nevents: #more events to check and see if it modulates, changed from Nevents
+            while matches < 1: #more events to check and see if it modulates, changed from Nevents
                 U = u_range*np.random.rand() #random number - range based on sigma_anapole or sigma_si above
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
@@ -1208,11 +1208,11 @@ class Simulation_AM(object):
         cb = plt.colorbar()
         cb.set_label('counts')"""
 
-        plt.figure(1)
+        """plt.figure(1)
         #histogram to see number of events at particular times
         plt.hist(self.T_array, 50, normed = False, histtype= 'step')
         plt.xlabel("Time")
-        plt.ylabel("Number of events at time T")
+        plt.ylabel("Number of events at time T")"""
 
 
 
@@ -1222,7 +1222,7 @@ class Simulation_AM(object):
 
         
                
-        """if make_plot:
+        if make_plot:
             t = np.linspace(self.Tmin, self.Tmax, 21)
             q = np.linspace(self.Qmin, self.Qmax, 20)
             grid = []
@@ -1233,15 +1233,13 @@ class Simulation_AM(object):
                                 sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                 Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
                                 Tmin = self.Tmin, Tmax = self.Tmax)
-                    minigrid.append(point[0])
+                    minigrid.append(point) #IF NORMALIZING FUNCTION MAKE POINT[0]
                 grid.append(minigrid)
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(10,5)) # 2 subplots, fixes the figure size
             fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
-            #ax1.set_yscale('log') ########
-            #ax1.set_xscale('log') ########
-            ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto') # graphs a smooth gradient
+            image = ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto') # graphs a smooth gradient
             # for some reason, extent can't start at self.Qmin, but can start at 5???
-            #cbar = plt.colorbar(image)
+            cbar = plt.colorbar(image, ax = ax1)
             #cbar.set_clim(vmin=-200, vmax=200)
             xlabel = ax1.set_xlabel('Energy in keV')
             ylabel = ax1.set_ylabel('Time in Days')
@@ -1259,7 +1257,7 @@ class Simulation_AM(object):
 
 
         if return_plot_items:
-            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize"""
+            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
 
 
 
