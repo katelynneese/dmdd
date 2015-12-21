@@ -113,13 +113,13 @@ def integral(Qmin, Qmax, Tmin, Tmax, Qpoints = 1000., Tpoints = 1000.,
 def PDF(Q, time, element, mass, sigma_si, sigma_anapole, Qmin, Qmax, Tmin, Tmax):
     drdq = dRdQ_AM(Q=np.asarray(Q), time=time, element = element, mass = mass,
     sigma_si = sigma_si, sigma_anapole = sigma_anapole)
-    #norm = integral(Qmin = np.asarray(Qmin),
-                    #Qmax = np.asarray(Qmax),
-                    #Tmin = Tmin, Tmax = Tmax,
-                    #element = element, sigma_si = sigma_si,
-                    #sigma_anapole = sigma_anapole, mass = mass)
+    norm = integral(Qmin = np.asarray(Qmin),
+                    Qmax = np.asarray(Qmax),
+                    Tmin = Tmin, Tmax = Tmax,
+                    element = element, sigma_si = sigma_si,
+                    sigma_anapole = sigma_anapole, mass = mass)
 
-    return drdq#/norm[0] #REMOVED NORMALIZATION FOR NOW, ADD BACK IN LATER
+    return drdq/norm[0] #can add or remove normalization here
 
 
 
@@ -1128,12 +1128,12 @@ class Simulation_AM(object):
             #else:
                 #u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            u_range = 1e-10 #temporarily hard coding this to find anapole and si values for lower energies
+            u_range = 3 #temporarily hard coding this to find anapole and si values for lower energies
             # 5 for middle Q ranges
             #will put an if statement in later
             print Nevents
 
-            while matches < 1: #more events to check and see if it modulates, changed from Nevents
+            while matches < Nevents: #more events to check and see if it modulates, changed from Nevents
                 U = u_range*np.random.rand() #random number - range based on sigma_anapole or sigma_si above
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
                 T_rand = np.random.rand()*(self.Tmax - self.Tmin) + self.Tmin #random number between Tmax and Tmin
@@ -1150,7 +1150,7 @@ class Simulation_AM(object):
                     self.T_array.append(T_rand)
                     
                     if matches % 100 == 0:
-                        print matches #every 10 particles found print this so that I know the simulation is still running
+                        print matches #every 100 particles found print this so that I know the simulation is still running
                         #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
             Qgrid = np.linspace(self.experiment.Qmin,self.experiment.Qmax,npts)
@@ -1201,6 +1201,7 @@ class Simulation_AM(object):
         Qbins_theory = self.model_Qgrid"""
 
 
+        #Code for 2d histograms
         """#testing a 2d histogram with hexagonal cells
         plt.hexbin(self.Q_array, self.T_array, cmap=plt.cm.YlOrRd_r, gridsize = 20) #changing gridsize to see if that changes anything
         plt.axis([self.Qmin, self.Qmax, 0, 365])
@@ -1208,21 +1209,18 @@ class Simulation_AM(object):
         cb = plt.colorbar()
         cb.set_label('counts')"""
 
-        """plt.figure(1)
+        #code for 1d histogram plots
+
+        plt.figure(1)
         #histogram to see number of events at particular times
         plt.hist(self.T_array, 50, normed = False, histtype= 'step')
         plt.xlabel("Time")
-        plt.ylabel("Number of events at time T")"""
+        plt.ylabel("Number of events at time T")
 
 
-
-
-
-
-
-        
+        #code for theory graph
                
-        if make_plot:
+        """if make_plot:
             t = np.linspace(self.Tmin, self.Tmax, 21)
             q = np.linspace(self.Qmin, self.Qmax, 20)
             grid = []
@@ -1237,14 +1235,14 @@ class Simulation_AM(object):
                 grid.append(minigrid)
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(10,5)) # 2 subplots, fixes the figure size
             fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
-            image = ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto') # graphs a smooth gradient
+            image = ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto')
+            # graphs a smooth gradient
             # for some reason, extent can't start at self.Qmin, but can start at 5???
             cbar = plt.colorbar(image, ax = ax1)
-            #cbar.set_clim(vmin=-200, vmax=200)
+            #creates a colorbar which displays next to the theory graph
             xlabel = ax1.set_xlabel('Energy in keV')
             ylabel = ax1.set_ylabel('Time in Days')
-            #here X and Y are a meshgrid, an array of arrays... which doesn't work for PDF/ dRdQ_AM
-            ax2.plot(self.Q_array, self.T_array, 'ob', ms=0.4) ####### alpha = 0.9
+            ax2.plot(self.Q_array, self.T_array, 'ob', ms=0.4) #code for simulation
             xlabel2 = ax2.set_xlabel('Energy in keV')
             ylabel2 = ax2.set_ylabel('Time in Days')
             ax2.set_xlim(self.Qmin, self.Qmax)
@@ -1257,7 +1255,7 @@ class Simulation_AM(object):
 
 
         if return_plot_items:
-            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
+            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize"""
 
 
 
