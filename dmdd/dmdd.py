@@ -78,7 +78,6 @@ def dRdQ_AM(mass = 50., sigma_si = 0, sigma_anapole = 0, Q = 100.,
     "V_amplitude is the velocity of earth * cos(angle of tilt with galatic plane)"
     "Time t = 0 corresponds to when the velocity is 220 m/s, which occurs in March**"
     v_lag = vlag_mean + v_amplitude*np.sin((2*np.pi*time)/(365.))
-    #print type(v_lag) #vlag must be a number not an array
     rate_QT = rate_UV.dRdQ(Q = energy, v_lag = v_lag, 
                         mass = mass, sigma_si = sigma_si,
                         sigma_anapole = sigma_anapole, element = element)
@@ -1109,6 +1108,7 @@ class Simulation_AM(object):
         if Nexpected > 0:
             npts = 10000
             Nevents = poisson.rvs(Nexpected) # the number to sum to
+            self.Nevents = Nevents
 
 
 
@@ -1128,11 +1128,10 @@ class Simulation_AM(object):
             #else:
                 #u_range = 800 #sigma_si's pdf goes upwards to 700
 
-            u_range = 3 #temporarily hard coding this to find anapole and si values for lower energies
+            u_range = 250 #temporarily hard coding this to find anapole and si values for lower energies
             # 5 for middle Q ranges
             #will put an if statement in later
-            print Nevents
-
+            
             while matches < Nevents: #more events to check and see if it modulates, changed from Nevents
                 U = u_range*np.random.rand() #random number - range based on sigma_anapole or sigma_si above
                 Q_rand = np.random.rand()*(self.Qmax - self.Qmin) + self.Qmin #random number between Qmax and Qmin 
@@ -1149,7 +1148,7 @@ class Simulation_AM(object):
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
                     
-                    if matches % 100 == 0:
+                    if matches % 10 == 0:
                         print matches #every 100 particles found print this so that I know the simulation is still running
                         #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
@@ -1202,25 +1201,30 @@ class Simulation_AM(object):
 
 
         #Code for 2d histograms
-        """#testing a 2d histogram with hexagonal cells
+        #testing a 2d histogram with hexagonal cells
+        plt.figure(1)
         plt.hexbin(self.Q_array, self.T_array, cmap=plt.cm.YlOrRd_r, gridsize = 20) #changing gridsize to see if that changes anything
         plt.axis([self.Qmin, self.Qmax, 0, 365])
-        plt.title("Hexagon binning for Simulated Events")
+        plt.axis('tight') #testing this function for no whitespace
+        plt.title("%i Simulated Events for %s Model" % (self.Nevents, self.name), fontsize = 18)
+        plt.xlabel("Energy of Recoil (keV)")
+        plt.ylabel("Time in Days")
         cb = plt.colorbar()
-        cb.set_label('counts')"""
+        cb.set_label('Number of Events')
 
         #code for 1d histogram plots
 
-        plt.figure(1)
+        plt.figure(2)
         #histogram to see number of events at particular times
         plt.hist(self.T_array, 50, normed = False, histtype= 'step')
-        plt.xlabel("Time")
-        plt.ylabel("Number of events at time T")
+        plt.title("%i Simulated Events for %s Model" % (self.Nevents, self.name), fontsize = 18)
+        plt.xlabel("Time in Days")
+        plt.ylabel("Number of Events")
 
 
         #code for theory graph
                
-        """if make_plot:
+        if make_plot:
             t = np.linspace(self.Tmin, self.Tmax, 21)
             q = np.linspace(self.Qmin, self.Qmax, 20)
             grid = []
@@ -1231,20 +1235,22 @@ class Simulation_AM(object):
                                 sigma_si= self.sigma_si, sigma_anapole = self.sigma_anapole,
                                 Qmin = np.asarray([self.Qmin]), Qmax = np.asarray([self.Qmax]),
                                 Tmin = self.Tmin, Tmax = self.Tmax)
-                    minigrid.append(point) #IF NORMALIZING FUNCTION MAKE POINT[0]
+                    minigrid.append(point[0]) #IF NORMALIZING FUNCTION MAKE POINT[0]
                 grid.append(minigrid)
             fig, (ax1,ax2) = plt.subplots(1,2, figsize=(10,5)) # 2 subplots, fixes the figure size
-            fig.suptitle("Number of Recoils vs Energy and Time for %s Model" % (self.name), fontsize = 18)
-            image = ax1.imshow(grid, cmap='hot', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto')
+            fig.suptitle("%i Simulated Events for %s Model" % (self.Nevents, self.name), fontsize = 18)
+            image = ax1.imshow(grid, cmap='hot', origin = 'lower', extent=[5,self.Qmax,self.Tmin,self.Tmax], aspect='auto')
             # graphs a smooth gradient
             # for some reason, extent can't start at self.Qmin, but can start at 5???
             cbar = plt.colorbar(image, ax = ax1)
+            cbar.set_label('Probability Density')
             #creates a colorbar which displays next to the theory graph
             xlabel = ax1.set_xlabel('Energy in keV')
             ylabel = ax1.set_ylabel('Time in Days')
             ax2.plot(self.Q_array, self.T_array, 'ob', ms=0.4) #code for simulation
             xlabel2 = ax2.set_xlabel('Energy in keV')
-            ylabel2 = ax2.set_ylabel('Time in Days')
+            ylabel2 = ax2.set_ylabel('   ')
+
             ax2.set_xlim(self.Qmin, self.Qmax)
             ax2.set_ylim(self.Tmin, self.Tmax)
 
@@ -1255,7 +1261,7 @@ class Simulation_AM(object):
 
 
         if return_plot_items:
-            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize"""
+            return Qbins, Qhist, xerr, yerr, Qbins_theory, Qhist_theory, binsize
 
 
 
