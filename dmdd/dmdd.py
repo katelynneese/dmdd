@@ -1127,8 +1127,9 @@ class Simulation_AM(object):
                 #u_range = 250 #sigma_anapole's pdf goes upwards of 150
             #else:
                 #u_range = 800 #sigma_si's pdf goes upwards to 700
-
-            u_range = 250 #temporarily hard coding this to find anapole and si values for lower energies
+            
+            print Nevents
+            u_range = 200 #temporarily hard coding this to find anapole and si values for lower energies
             # 5 for middle Q ranges
             #will put an if statement in later
             
@@ -1148,7 +1149,7 @@ class Simulation_AM(object):
                     self.Q_array.append(Q_rand[0]) #qrand is returned as an array, but we want it to be a number
                     self.T_array.append(T_rand)
                     
-                    if matches % 10 == 0:
+                    if matches % 100 == 0:
                         print matches #every 100 particles found print this so that I know the simulation is still running
                         #especially helpful for the anapole model which frequently takes a longer time than the SI model
 
